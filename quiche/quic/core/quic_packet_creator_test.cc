@@ -4588,7 +4588,8 @@ TEST_F(QuicPacketCreatorMultiplePacketsTest,
 }
 
 TEST_P(QuicPacketCreatorTest, InitialPacketBufferOverflow) {
-  if (!VersionIsIetfQuic(creator_.transport_version())) {
+  // EXPECT_QUIC_BUG tests are expensive so only run one instance of them.
+  if (!IsDefaultTestConfiguration()) {
     return;
   }
   SetQuicReloadableFlag(quic_clear_packet_on_serialization_failure, true);
@@ -4596,11 +4597,14 @@ TEST_P(QuicPacketCreatorTest, InitialPacketBufferOverflow) {
   QuicCoalescedPacket coalesced;
   EXPECT_TRUE(BuildAndCoalescePacket(coalesced, ENCRYPTION_INITIAL));
   char buffer[kMaxOutgoingPacketSize];
-  EXPECT_CALL(framer_visitor_, OnError);
-  EXPECT_CALL(delegate_, OnUnrecoverableError);
-  EXPECT_QUIC_BUG(creator_.SerializeCoalescedPacket(coalesced, buffer,
-                                                    kMaxOutgoingPacketSize - 1),
-                  "Client: Failed to encrypt packet number 1");
+  EXPECT_QUIC_BUG(
+      {
+        EXPECT_CALL(framer_visitor_, OnError);
+        EXPECT_CALL(delegate_, OnUnrecoverableError);
+        creator_.SerializeCoalescedPacket(coalesced, buffer,
+                                          kMaxOutgoingPacketSize - 1);
+      },
+      "Client: Failed to encrypt packet number 1");
 }
 
 TEST_P(QuicPacketCreatorTest, SendSconeIndicatorInClientInitial) {
@@ -4825,7 +4829,8 @@ TEST_P(QuicPacketCreatorTest, SconePacketWithInitialPacket) {
 }
 
 TEST_P(QuicPacketCreatorTest, SconePacketWithInitialPacketBufferOverflow) {
-  if (!VersionIsIetfQuic(creator_.transport_version())) {
+  // EXPECT_QUIC_BUG tests are expensive so only run one instance of them.
+  if (!IsDefaultTestConfiguration()) {
     return;
   }
   SetQuicReloadableFlag(quic_clear_packet_on_serialization_failure, true);
@@ -4834,11 +4839,14 @@ TEST_P(QuicPacketCreatorTest, SconePacketWithInitialPacketBufferOverflow) {
   QuicCoalescedPacket coalesced;
   EXPECT_TRUE(BuildAndCoalescePacket(coalesced, ENCRYPTION_INITIAL));
   char buffer[kMaxOutgoingPacketSize];
-  EXPECT_CALL(framer_visitor_, OnError);
-  EXPECT_CALL(delegate_, OnUnrecoverableError);
-  EXPECT_QUIC_BUG(creator_.SerializeCoalescedPacket(coalesced, buffer,
-                                                    kMaxOutgoingPacketSize - 1),
-                  "Client: Failed to encrypt packet number 1");
+  EXPECT_QUIC_BUG(
+      {
+        EXPECT_CALL(framer_visitor_, OnError);
+        EXPECT_CALL(delegate_, OnUnrecoverableError);
+        creator_.SerializeCoalescedPacket(coalesced, buffer,
+                                          kMaxOutgoingPacketSize - 1);
+      },
+      "Client: Failed to encrypt packet number 1");
 }
 
 }  // namespace
