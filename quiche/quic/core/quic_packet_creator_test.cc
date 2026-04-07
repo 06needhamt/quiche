@@ -350,8 +350,10 @@ class QuicPacketCreatorTest : public QuicTestWithParam<TestParams> {
   }
 
   bool LastTwoBytesAreSconeIndicator(const char* buffer, size_t length) {
-    return (buffer[length - 2] == ((kSconeIndicator & 0xff00) >> 8) &&
-            buffer[length - 1] == (kSconeIndicator & 0xff));
+    return (buffer[length - 2] ==
+                static_cast<const char>(((kSconeIndicator & 0xff00) >> 8)) &&
+            buffer[length - 1] ==
+                static_cast<const char>(kSconeIndicator & 0xff));
   }
 
   void TestChaosProtection(bool enabled);
