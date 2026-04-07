@@ -717,7 +717,7 @@ bool QuicConnection::MaybeTestLiveness() {
     QUIC_DLOG(WARNING) << "Idle network deadline has passed";
     if (quic_close_on_idle_timeout_) {
       QUIC_RELOADABLE_FLAG_COUNT(quic_close_on_idle_timeout);
-      CloseConnection(QUIC_NETWORK_IDLE_TIMEOUT,
+      CloseConnection(QUIC_CLIENT_REQUEST_IDLE_TIMEOUT,
                       "Idle network deadline has already passed",
                       ConnectionCloseBehavior::SILENT_CLOSE);
     }
