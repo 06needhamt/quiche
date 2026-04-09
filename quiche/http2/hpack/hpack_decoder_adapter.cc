@@ -124,7 +124,7 @@ void HpackDecoderAdapter::ListenerAdapter::set_handler(
 void HpackDecoderAdapter::ListenerAdapter::OnHeaderListStart() {
   QUICHE_DVLOG(2) << "HpackDecoderAdapter::ListenerAdapter::OnHeaderListStart";
   total_hpack_bytes_ = 0;
-  total_uncompressed_bytes_ = 0;
+  current_header_block_uncompressed_bytes_ = 0;
   handler_->OnHeaderBlockStart();
 }
 
@@ -132,13 +132,14 @@ void HpackDecoderAdapter::ListenerAdapter::OnHeader(absl::string_view name,
                                                     absl::string_view value) {
   QUICHE_DVLOG(2) << "HpackDecoderAdapter::ListenerAdapter::OnHeader:\n name: "
                   << name << "\n value: " << value;
-  total_uncompressed_bytes_ += name.size() + value.size();
+  current_header_block_uncompressed_bytes_ += name.size() + value.size();
   handler_->OnHeader(name, value);
 }
 
 void HpackDecoderAdapter::ListenerAdapter::OnHeaderListEnd() {
   QUICHE_DVLOG(2) << "HpackDecoderAdapter::ListenerAdapter::OnHeaderListEnd";
-  handler_->OnHeaderBlockEnd(total_uncompressed_bytes_, total_hpack_bytes_);
+  handler_->OnHeaderBlockEnd(current_header_block_uncompressed_bytes_,
+                             total_hpack_bytes_);
   handler_ = &no_op_handler_;
 }
 
