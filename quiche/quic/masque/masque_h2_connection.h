@@ -71,6 +71,9 @@ class QUICHE_NO_EXPORT MasqueH2Connection
   void SendResponse(int32_t stream_id, const quiche::HttpHeaderBlock& headers,
                     const std::string& body);
 
+  // Human-readable string identifying this connection for logging.
+  const std::string& info() const { return info_; }
+
  private:
   struct MasqueH2Stream {
     quiche::HttpHeaderBlock received_headers;
@@ -137,9 +140,12 @@ class QUICHE_NO_EXPORT MasqueH2Connection
   bool OnMetadataEndForStream(Http2StreamId stream_id) override;
   void OnErrorDebug(absl::string_view message) override;
 
+  static uint32_t GetNextConnectionId();
+
   SSL* ssl_;
   std::unique_ptr<http2::adapter::OgHttp2Adapter> h2_adapter_;
   const bool is_server_;
+  const std::string info_;
   bool tls_connected_ = false;
   absl::Status error_ = absl::OkStatus();
   absl::flat_hash_map<Http2StreamId, std::unique_ptr<MasqueH2Stream>>

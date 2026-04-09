@@ -5,6 +5,7 @@
 #include "quiche/quic/masque/masque_h2_connection.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
@@ -29,7 +30,7 @@
 #include "quiche/common/platform/api/quiche_logging.h"
 #include "quiche/common/quiche_text_utils.h"
 
-#define ENDPOINT (is_server_ ? "Server: " : "Client: ")
+#define ENDPOINT info_ << ": "
 
 using http2::adapter::Header;
 using http2::adapter::Http2KnownSettingsId;
@@ -75,9 +76,18 @@ std::string FormatSslError(const char* msg, int ssl_err, int ret) {
   return result;
 }
 
+// static
+uint32_t MasqueH2Connection::GetNextConnectionId() {
+  static std::atomic<uint32_t> next_connection_id = 1;
+  return next_connection_id.fetch_add(1, std::memory_order_relaxed);
+}
+
 MasqueH2Connection::MasqueH2Connection(SSL* ssl, bool is_server,
                                        Visitor* visitor)
-    : ssl_(ssl), is_server_(is_server), visitor_(visitor) {}
+    : ssl_(ssl),
+      is_server_(is_server),
+      info_(absl::StrCat(is_server ? "S" : "C", GetNextConnectionId())),
+      visitor_(visitor) {}
 
 void MasqueH2Connection::OnTransportReadable() {
   while (TryRead()) {
@@ -343,10 +353,11 @@ void MasqueH2Connection::SendResponse(int32_t stream_id,
 int32_t MasqueH2Connection::SendRequest(const quiche::HttpHeaderBlock& headers,
                                         const std::string& body) {
   if (is_server_) {
-    QUICHE_LOG(FATAL) << "Server cannot send requests";
+    QUICHE_LOG(FATAL) << ENDPOINT << "Server cannot send requests";
   }
   if (!h2_adapter_) {
-    QUICHE_LOG(ERROR) << "Connection is not ready to send requests yet";
+    QUICHE_LOG(ERROR) << ENDPOINT
+                      << "Connection is not ready to send requests yet";
     return -1;
   }
   std::vector<Header> h2_headers = ConvertHeaders(headers);

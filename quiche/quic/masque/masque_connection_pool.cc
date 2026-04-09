@@ -224,7 +224,9 @@ MasqueConnectionPool::SendRequest(const Message& request, bool mtls) {
       GetOrCreateConnectionState(std::string(authority->second), mtls));
   auto pending_request = std::make_unique<PendingRequest>();
   if (connection->connection() != nullptr) {
-    QUICHE_LOG(INFO) << "Reusing existing connection to " << authority->second;
+    QUICHE_LOG(INFO) << "Reusing existing connection "
+                     << connection->connection()->info() << " to "
+                     << authority->second;
     pending_request->connection = connection->connection();
     pending_request->stream_id =
         connection->connection()->SendRequest(request.headers, request.body);
@@ -272,8 +274,8 @@ void MasqueConnectionPool::AttachConnectionToPendingRequests(
     if (authority_header->second != authority) {
       continue;
     }
-    QUICHE_LOG(INFO) << "Attaching connection to pending request for "
-                     << authority;
+    QUICHE_LOG(INFO) << "Attaching connection " << connection->info()
+                     << " to pending request for " << authority;
     pending_request.connection = connection;
   }
 }
@@ -286,11 +288,13 @@ void MasqueConnectionPool::SendPendingRequests(MasqueH2Connection* connection) {
       ++it;
       continue;
     }
-    QUICHE_LOG(INFO) << "Sending pending request ID " << request_id;
+    QUICHE_LOG(INFO) << "Sending pending request ID " << request_id
+                     << " on connection " << connection->info();
     int32_t stream_id = connection->SendRequest(pending_request.request.headers,
                                                 pending_request.request.body);
     if (stream_id < 0) {
-      QUICHE_LOG(ERROR) << "Failed to send request";
+      QUICHE_LOG(ERROR) << "Failed to send request ID " << request_id
+                        << " on connection " << connection->info();
       visitor_->OnPoolResponse(this, request_id,
                                absl::InternalError("Failed to send request"));
       pending_requests_.erase(it++);
