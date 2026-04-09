@@ -2714,8 +2714,9 @@ TEST_F(MoqtSessionTest, IncomingJoiningFetchBadRequestId) {
   stream_input->OnFetchMessage(fetch);
 }
 
-TEST_F(MoqtSessionTest, IncomingJoiningFetchNonLatestObject) {
+TEST_F(MoqtSessionTest, IncomingJoiningFetchForwardZero) {
   MoqtSubscribe subscribe = DefaultSubscribe();
+  subscribe.parameters.set_forward(false);
   std::unique_ptr<MoqtControlParserVisitor> stream_input =
       MoqtSessionPeer::CreateControlStream(&session_, &mock_stream_);
   MockTrackPublisher* track = CreateTrackPublisher();
@@ -2727,7 +2728,7 @@ TEST_F(MoqtSessionTest, IncomingJoiningFetchNonLatestObject) {
   fetch.fetch = JoiningFetchRelative(1, 2);
   EXPECT_CALL(mock_session_,
               CloseSession(static_cast<uint64_t>(MoqtError::kProtocolViolation),
-                           "Joining Fetch for non-LargestObject subscribe"))
+                           "Joining Fetch for non-forwarding subscribe"))
       .Times(1);
   stream_input->OnFetchMessage(fetch);
 }

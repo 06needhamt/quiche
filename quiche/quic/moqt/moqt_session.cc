@@ -1481,9 +1481,9 @@ void MoqtSession::ControlStream::OnFetchMessage(const MoqtFetch& message) {
     if (!it->second->can_have_joining_fetch()) {
       QUIC_DLOG(INFO) << ENDPOINT << "Received a JOINING_FETCH for "
                       << "joining_request_id " << joining_request_id
-                      << " that is not a LargestObject";
+                      << " that is not forwarding";
       session_->Error(MoqtError::kProtocolViolation,
-                      "Joining Fetch for non-LargestObject subscribe");
+                      "Joining Fetch for non-forwarding subscribe");
       return;
     }
     track_name = it->second->publisher().GetTrackName();
@@ -1862,10 +1862,7 @@ MoqtSession::PublishedSubscription::PublishedSubscription(
     : session_(session),
       track_publisher_(track_publisher),
       request_id_(subscribe.request_id),
-      can_have_joining_fetch_(
-          subscribe.parameters.subscription_filter.has_value() &&
-          subscribe.parameters.subscription_filter->type() ==
-              MoqtFilterType::kLargestObject),
+      can_have_joining_fetch_(subscribe.parameters.forward()),
       track_alias_(track_alias),
       parameters_(subscribe.parameters),
       monitoring_interface_(monitoring_interface) {
@@ -1909,9 +1906,7 @@ void MoqtSession::PublishedSubscription::Update(
   // TODO(martinduke): If there are auth tokens, this probably has to go to the
   // application.
   parameters_.Update(parameters);
-  can_have_joining_fetch_ = (parameters_.subscription_filter.has_value() &&
-                             parameters_.subscription_filter->type() ==
-                                 MoqtFilterType::kLargestObject);
+  can_have_joining_fetch_ = parameters_.forward();
 }
 
 void MoqtSession::PublishedSubscription::set_subscriber_priority(
