@@ -81,6 +81,24 @@ absl::Status ParseHeadersIntoMap(
   return absl::OkStatus();
 }
 
+absl::StatusOr<std::vector<absl::string_view>> SplitIntoChunks(
+    absl::string_view data, int num_chunks) {
+  if (num_chunks <= 0) {
+    return absl::InvalidArgumentError("num_chunks must be greater than 0");
+  }
+  if (data.size() < num_chunks) {
+    return absl::InvalidArgumentError("data is smaller than num_chunks");
+  }
+  std::vector<absl::string_view> chunks;
+  size_t offset = 0;
+  for (size_t i = 0; i < num_chunks; ++i) {
+    size_t end = (data.size() * (i + 1)) / num_chunks;
+    chunks.push_back(data.substr(offset, end - offset));
+    offset = end;
+  }
+  return chunks;
+}
+
 }  // namespace
 
 std::string MasqueOhttpClient::Config::PerRequestConfig::method() const {
@@ -405,10 +423,11 @@ absl::Status MasqueOhttpClient::SendOhttpRequest(
         "Cannot send OHTTP request without OHTTP client");
   }
   std::string encoded_data;
-  const bool use_indeterminate_length =
-      per_request_config.use_indeterminate_length().value_or(
-          per_request_config.use_chunked_ohttp());
-  if (use_indeterminate_length) {
+  int num_bhttp_chunks = per_request_config.num_bhttp_chunks();
+  if (num_bhttp_chunks < 0) {
+    num_bhttp_chunks = (per_request_config.use_chunked_ohttp() ? 1 : 0);
+  }
+  if (num_bhttp_chunks > 0) {
     BinaryHttpRequest::IndeterminateLengthEncoder encoder;
 
     QUICHE_ASSIGN_OR_RETURN(encoded_data,
@@ -422,26 +441,17 @@ absl::Status MasqueOhttpClient::SendOhttpRequest(
                             encoder.EncodeHeaders(absl::MakeSpan(headers)));
     encoded_data += encoded_headers;
     if (!post_data.empty()) {
-      absl::string_view body = post_data;
-      std::vector<absl::string_view> body_chunks;
-      if (body.size() > 1) {
-        // Intentionally split the data into two chunks to test body chunking.
-        body_chunks.push_back(body.substr(0, body.size() / 2));
-        body_chunks.push_back(body.substr(body.size() / 2));
-      } else {
-        body_chunks.push_back(body);
-      }
+      QUICHE_ASSIGN_OR_RETURN(std::vector<absl::string_view> body_chunks,
+                              SplitIntoChunks(post_data, num_bhttp_chunks));
       QUICHE_ASSIGN_OR_RETURN(
           std::string encoded_body,
           encoder.EncodeBodyChunks(absl::MakeSpan(body_chunks),
                                    /*body_chunks_done=*/false));
       encoded_data += encoded_body;
     }
-    std::vector<absl::string_view> empty_body_chunks;
     QUICHE_ASSIGN_OR_RETURN(
         std::string encoded_final_chunk,
-        encoder.EncodeBodyChunks(absl::MakeSpan(empty_body_chunks),
-                                 /*body_chunks_done=*/true));
+        encoder.EncodeBodyChunks({}, /*body_chunks_done=*/true));
     encoded_data += encoded_final_chunk;
     std::vector<quiche::BinaryHttpMessage::FieldView> trailers;
     QUICHE_ASSIGN_OR_RETURN(std::string encoded_trailers,

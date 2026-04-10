@@ -54,10 +54,7 @@ class QUICHE_EXPORT MasqueOhttpClient
       void SetUseChunkedOhttp(bool use_chunked_ohttp) {
         use_chunked_ohttp_ = use_chunked_ohttp;
       }
-      void SetUseIndeterminateLength(
-          std::optional<bool> use_indeterminate_length) {
-        use_indeterminate_length_ = use_indeterminate_length;
-      }
+      void SetNumBhttpChunks(int num_chunks) { num_bhttp_chunks_ = num_chunks; }
       void SetExpectedGatewayError(const std::string& expected_gateway_error) {
         expected_gateway_error_ = expected_gateway_error;
       }
@@ -84,9 +81,7 @@ class QUICHE_EXPORT MasqueOhttpClient
         return outer_headers_;
       }
       bool use_chunked_ohttp() const { return use_chunked_ohttp_; }
-      std::optional<bool> use_indeterminate_length() const {
-        return use_indeterminate_length_;
-      }
+      int num_bhttp_chunks() const { return num_bhttp_chunks_; }
       std::optional<std::string> expected_gateway_error() const {
         return expected_gateway_error_;
       }
@@ -107,7 +102,7 @@ class QUICHE_EXPORT MasqueOhttpClient
       std::vector<std::pair<std::string, std::string>> headers_;
       std::vector<std::pair<std::string, std::string>> outer_headers_;
       bool use_chunked_ohttp_ = false;
-      std::optional<bool> use_indeterminate_length_;
+      int num_bhttp_chunks_ = -1;
       std::optional<std::string> expected_gateway_error_;
       std::optional<uint16_t> expected_gateway_status_code_;
       std::optional<uint16_t> expected_encapsulated_status_code_;
