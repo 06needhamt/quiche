@@ -425,7 +425,7 @@ absl::Status MasqueOhttpClient::SendOhttpRequest(
   std::string encoded_data;
   int num_bhttp_chunks = per_request_config.num_bhttp_chunks();
   if (num_bhttp_chunks < 0) {
-    num_bhttp_chunks = (per_request_config.use_chunked_ohttp() ? 1 : 0);
+    num_bhttp_chunks = (per_request_config.num_ohttp_chunks() > 0 ? 1 : 0);
   }
   if (num_bhttp_chunks > 0) {
     BinaryHttpRequest::IndeterminateLengthEncoder encoder;
@@ -466,23 +466,24 @@ absl::Status MasqueOhttpClient::SendOhttpRequest(
     binary_request.set_body(post_data);
     QUICHE_ASSIGN_OR_RETURN(encoded_data, binary_request.Serialize());
   }
-  if (pending_request.per_request_config.use_chunked_ohttp()) {
+  int num_ohttp_chunks = pending_request.per_request_config.num_ohttp_chunks();
+  if (num_ohttp_chunks > 0) {
     pending_request.chunk_handler = std::make_unique<ChunkHandler>();
     QUICHE_ASSIGN_OR_RETURN(
         ChunkedObliviousHttpClient chunked_client,
         ChunkedObliviousHttpClient::Create(
             ohttp_client_->GetPublicKey(), ohttp_client_->GetKeyConfig(),
             pending_request.chunk_handler.get()));
-    // Intentionally split the data into two chunks to test encryption chunking.
-    QUICHE_ASSIGN_OR_RETURN(encrypted_data,
-                            chunked_client.EncryptRequestChunk(
-                                absl::string_view(encoded_data).substr(0, 1),
-                                /*is_final_chunk=*/false));
-    QUICHE_ASSIGN_OR_RETURN(std::string encrypted_data2,
-                            chunked_client.EncryptRequestChunk(
-                                absl::string_view(encoded_data).substr(1),
-                                /*is_final_chunk=*/true));
-    encrypted_data += encrypted_data2;
+    QUICHE_ASSIGN_OR_RETURN(std::vector<absl::string_view> ohttp_chunks,
+                            SplitIntoChunks(encoded_data, num_ohttp_chunks));
+
+    for (size_t i = 0; i < ohttp_chunks.size(); i++) {
+      bool is_final_chunk = (i == ohttp_chunks.size() - 1);
+      QUICHE_ASSIGN_OR_RETURN(
+          std::string ohttp_chunk,
+          chunked_client.EncryptRequestChunk(ohttp_chunks[i], is_final_chunk));
+      encrypted_data += ohttp_chunk;
+    }
 
     pending_request.chunk_handler->SetChunkedClient(std::move(chunked_client));
   } else {
@@ -498,9 +499,7 @@ absl::Status MasqueOhttpClient::SendOhttpRequest(
   request.headers[":authority"] = relay_url_.HostPort();
   request.headers[":path"] = relay_url_.PathParamsQuery();
   request.headers["content-type"] =
-      pending_request.per_request_config.use_chunked_ohttp()
-          ? "message/ohttp-chunked-req"
-          : "message/ohttp-req";
+      num_ohttp_chunks > 0 ? "message/ohttp-chunked-req" : "message/ohttp-req";
   for (const std::pair<std::string, std::string>& header :
        per_request_config.outer_headers()) {
     request.headers[header.first] = header.second;
@@ -598,9 +597,10 @@ absl::Status MasqueOhttpClient::ProcessOhttpResponse(
     return absl::InvalidArgumentError(
         absl::StrCat("Bad gateway status code: ", gateway_status_code));
   }
-  std::string content_type = it->second.per_request_config.use_chunked_ohttp()
-                                 ? "message/ohttp-chunked-res"
-                                 : "message/ohttp-res";
+  std::string content_type =
+      it->second.per_request_config.num_ohttp_chunks() > 0
+          ? "message/ohttp-chunked-res"
+          : "message/ohttp-res";
   std::optional<uint16_t> expected_gateway_status_code =
       it->second.per_request_config.expected_gateway_status_code();
   absl::Status status = CheckStatusAndContentType(*response, content_type,
@@ -623,7 +623,7 @@ absl::Status MasqueOhttpClient::ProcessOhttpResponse(
   std::optional<Message> encapsulated_response;
   QUICHE_VLOG(2) << "Received encrypted response body: "
                  << absl::BytesToHexString(response->body);
-  if (it->second.per_request_config.use_chunked_ohttp()) {
+  if (it->second.per_request_config.num_ohttp_chunks() > 0) {
     QUICHE_ASSIGN_OR_RETURN(
         encapsulated_response,
         it->second.chunk_handler->DecryptFullResponse(response->body));

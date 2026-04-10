@@ -29,9 +29,6 @@ DEFINE_QUICHE_COMMAND_LINE_FLAG(
     bool, use_mtls_for_key_fetch, false,
     "If true, use mTLS when fetching the OHTTP/HPKE keys.");
 
-DEFINE_QUICHE_COMMAND_LINE_FLAG(bool, chunked, false,
-                                "If true, use chunked OHTTP.");
-
 DEFINE_QUICHE_COMMAND_LINE_FLAG(int, address_family, 0,
                                 "IP address family to use. Must be 0, 4 or 6. "
                                 "Defaults to 0 which means any.");
@@ -60,8 +57,14 @@ DEFINE_QUICHE_COMMAND_LINE_FLAG(
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
     int, num_bhttp_chunks, -1,
     "Number of indeterminate-length BHTTP chunks to split post data into. If "
-    "not set or if set to -1, it will match the chunked flag mode. If set to "
+    "not set or if set to -1, it will match the chunked mode (see "
+    "--num_ohttp_chunks). If set to "
     "0, the client will use known-length BHTTP.");
+
+DEFINE_QUICHE_COMMAND_LINE_FLAG(
+    int, num_ohttp_chunks, 0,
+    "Number of OHTTP chunks to split serialized BHTTP request into. If not set "
+    "or if set to 0, the client will use standard non-chunked OHTTP.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
     std::vector<std::string>, header, {},
@@ -120,8 +123,6 @@ absl::Status RunMasqueOhttpClient(int argc, char* argv[]) {
       quiche::GetQuicheCommandLineFlag(FLAGS_disable_certificate_verification);
   const bool use_mtls_for_key_fetch =
       quiche::GetQuicheCommandLineFlag(FLAGS_use_mtls_for_key_fetch);
-  const bool use_chunked_ohttp =
-      quiche::GetQuicheCommandLineFlag(FLAGS_chunked);
   const std::string client_cert_file =
       quiche::GetQuicheCommandLineFlag(FLAGS_client_cert_file);
   const std::string client_cert_key_file =
@@ -154,6 +155,8 @@ absl::Status RunMasqueOhttpClient(int argc, char* argv[]) {
   }
   std::optional<std::string> method =
       quiche::GetQuicheCommandLineFlag(FLAGS_method);
+  const int num_ohttp_chunks =
+      quiche::GetQuicheCommandLineFlag(FLAGS_num_ohttp_chunks);
   const int num_bhttp_chunks =
       quiche::GetQuicheCommandLineFlag(FLAGS_num_bhttp_chunks);
   std::vector<std::string> headers =
@@ -224,7 +227,7 @@ absl::Status RunMasqueOhttpClient(int argc, char* argv[]) {
       QUICHE_RETURN_IF_ERROR(
           per_request_config.AddPrivateToken(generated_private_token));
     }
-    per_request_config.SetUseChunkedOhttp(use_chunked_ohttp);
+    per_request_config.SetNumOhttpChunks(num_ohttp_chunks);
     per_request_config.SetNumBhttpChunks(num_bhttp_chunks);
     if (expect_gateway_error.has_value()) {
       per_request_config.SetExpectedGatewayError(*expect_gateway_error);
