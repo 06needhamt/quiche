@@ -34,7 +34,6 @@
 #include "quiche/quic/core/quic_flow_controller.h"
 #include "quiche/quic/core/quic_interval_set.h"
 #include "quiche/quic/core/quic_stream_priority.h"
-#include "quiche/quic/core/quic_stream_send_buffer_base.h"
 #include "quiche/quic/core/quic_stream_send_buffer_inlining.h"
 #include "quiche/quic/core/quic_stream_sequencer.h"
 #include "quiche/quic/core/quic_time.h"
@@ -526,9 +525,11 @@ class QUICHE_EXPORT QuicStream : public QuicStreamSequencer::StreamInterface {
 
   const QuicIntervalSet<QuicStreamOffset>& bytes_acked() const;
 
-  const QuicStreamSendBufferBase& send_buffer() const { return send_buffer_; }
+  const QuicStreamSendBufferInlining& send_buffer() const {
+    return send_buffer_;
+  }
 
-  QuicStreamSendBufferBase& send_buffer() { return send_buffer_; }
+  QuicStreamSendBufferInlining& send_buffer() { return send_buffer_; }
 
   // Called when the write side of the stream is closed, and all of the outgoing
   // data has been acknowledged.  This corresponds to the "Data Recvd" state of

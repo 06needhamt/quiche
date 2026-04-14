@@ -33,6 +33,7 @@
 #include "quiche/quic/core/quic_packets.h"
 #include "quiche/quic/core/quic_stream.h"
 #include "quiche/quic/core/quic_stream_priority.h"
+#include "quiche/quic/core/quic_stream_send_buffer_inlining.h"
 #include "quiche/quic/core/quic_types.h"
 #include "quiche/quic/core/quic_utils.h"
 #include "quiche/quic/core/quic_versions.h"
@@ -1966,7 +1967,7 @@ TEST_P(QuicSpdySessionTestClient, WritePriority) {
   session_->WritePriority(id, parent_stream_id,
                           Spdy3PriorityToHttp2Weight(priority), exclusive);
 
-  QuicStreamSendBufferBase& send_buffer =
+  QuicStreamSendBufferInlining& send_buffer =
       QuicStreamPeer::SendBuffer(headers_stream);
   ASSERT_EQ(1u, send_buffer.size());
 
@@ -4169,7 +4170,7 @@ TEST_P(QuicSpdySessionTestClient, LimitEncoderDynamicTableSize) {
   stream->WriteHeaders(std::move(headers), /* fin = */ true, nullptr);
 
   EXPECT_TRUE(headers_stream->HasBufferedData());
-  QuicStreamSendBufferBase& send_buffer =
+  QuicStreamSendBufferInlining& send_buffer =
       QuicStreamPeer::SendBuffer(headers_stream);
   ASSERT_EQ(1u, send_buffer.size());
 
