@@ -1487,22 +1487,50 @@ void MoqtSession::ControlStream::OnFetchMessage(const MoqtFetch& message) {
       return;
     }
     track_name = it->second->publisher().GetTrackName();
-    if (std::holds_alternative<JoiningFetchRelative>(message.fetch)) {
-      const JoiningFetchRelative& relative_fetch =
-          std::get<JoiningFetchRelative>(message.fetch);
-      QUIC_DLOG(INFO) << ENDPOINT << "Received a Relative Joining FETCH for "
-                      << track_name;
-      fetch = it->second->publisher().RelativeFetch(
-          relative_fetch.joining_start, message.parameters.group_order.value_or(
-                                            MoqtDeliveryOrder::kAscending));
+    if (it->second->established()) {
+      if (!it->second->parameters().largest_object.has_value()) {
+        // Nothing to Fetch.
+        SendRequestError(message.request_id, RequestErrorCode::kDoesNotExist,
+                         std::nullopt, "not found");
+        return;
+      }
+      const Location largest_location =
+          *it->second->parameters().largest_object;
+      uint64_t start_group;
+      if (std::holds_alternative<JoiningFetchRelative>(message.fetch)) {
+        const JoiningFetchRelative& relative_fetch =
+            std::get<JoiningFetchRelative>(message.fetch);
+        start_group =
+            (relative_fetch.joining_start > largest_location.group)
+                ? 0
+                : (largest_location.group - relative_fetch.joining_start);
+      } else {
+        const JoiningFetchAbsolute& absolute_fetch =
+            std::get<JoiningFetchAbsolute>(message.fetch);
+        start_group = absolute_fetch.joining_start;
+        if (start_group > largest_location.group) {
+          SendRequestError(message.request_id, RequestErrorCode::kInvalidRange,
+                           std::nullopt, "invalid range");
+          return;
+        }
+      }
+      fetch = it->second->publisher().StandaloneFetch(
+          Location{start_group, 0}, largest_location,
+          message.parameters.group_order.value_or(
+              MoqtDeliveryOrder::kAscending));
     } else {
-      const JoiningFetchAbsolute& absolute_fetch =
-          std::get<JoiningFetchAbsolute>(message.fetch);
-      QUIC_DLOG(INFO) << ENDPOINT << "Received a Absolute Joining FETCH for "
-                      << track_name;
-      fetch = it->second->publisher().AbsoluteFetch(
-          absolute_fetch.joining_start, message.parameters.group_order.value_or(
-                                            MoqtDeliveryOrder::kAscending));
+      // Subscription is in PENDING state.
+      if (std::holds_alternative<JoiningFetchRelative>(message.fetch)) {
+        fetch = it->second->publisher().RelativeFetch(
+            std::get<JoiningFetchRelative>(message.fetch).joining_start,
+            message.parameters.group_order.value_or(
+                MoqtDeliveryOrder::kAscending));
+      } else {
+        fetch = it->second->publisher().AbsoluteFetch(
+            std::get<JoiningFetchAbsolute>(message.fetch).joining_start,
+            message.parameters.group_order.value_or(
+                MoqtDeliveryOrder::kAscending));
+      }
     }
   }
   if (!fetch->GetStatus().ok()) {
@@ -1928,6 +1956,8 @@ void MoqtSession::PublishedSubscription::set_subscriber_priority(
 
 void MoqtSession::PublishedSubscription::OnSubscribeAccepted() {
   ControlStream* stream = session_->GetControlStream();
+  QUICHE_DCHECK(!established_);
+  established_ = true;
   parameters_.largest_object = track_publisher_->largest_location();
   if (parameters_.subscription_filter.has_value()) {
     parameters_.subscription_filter->OnLargestObject(

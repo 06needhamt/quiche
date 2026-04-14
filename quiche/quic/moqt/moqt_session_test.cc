@@ -2666,7 +2666,7 @@ TEST_F(MoqtSessionTest, IncomingRelativeJoiningFetch) {
   MoqtFetch fetch = DefaultFetch();
   fetch.request_id = 3;
   fetch.fetch = JoiningFetchRelative(1, 2);
-  EXPECT_CALL(*track, RelativeFetch(2, _))
+  EXPECT_CALL(*track, StandaloneFetch(Location(2, 0), Location(4, 10), _))
       .WillOnce(Return(std::make_unique<MockFetchTask>()));
   stream_input->OnFetchMessage(fetch);
 }
@@ -2693,7 +2693,7 @@ TEST_F(MoqtSessionTest, IncomingAbsoluteJoiningFetch) {
   MoqtFetch fetch = DefaultFetch();
   fetch.request_id = 3;
   fetch.fetch = JoiningFetchAbsolute(1, 2);
-  EXPECT_CALL(*track, AbsoluteFetch(2, _))
+  EXPECT_CALL(*track, StandaloneFetch(Location(2, 0), Location(4, 10), _))
       .WillOnce(Return(std::make_unique<MockFetchTask>()));
   stream_input->OnFetchMessage(fetch);
 }

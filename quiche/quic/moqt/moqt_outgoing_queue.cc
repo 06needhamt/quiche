@@ -158,45 +158,19 @@ std::unique_ptr<MoqtFetchTask> MoqtOutgoingQueue::StandaloneFetch(
 }
 
 std::unique_ptr<MoqtFetchTask> MoqtOutgoingQueue::RelativeFetch(
-    uint64_t group_diff, MoqtDeliveryOrder order) {
-  if (queue_.empty()) {
-    return std::make_unique<MoqtFailedFetch>(
-        absl::NotFoundError("No objects available on the track"));
-  }
-
-  uint64_t start_group = (group_diff > first_group_in_queue())
-                             ? 0
-                             : current_group_id_ - group_diff;
-  start_group = std::max(start_group, first_group_in_queue());
-  Location start = Location(start_group, 0);
-  Location end = Location(current_group_id_, queue_.back().size() - 1);
-
-  std::vector<Location> objects = GetCachedObjectsInRange(start, end);
-  if (order == MoqtDeliveryOrder::kDescending) {
-    ObjectsInDescendingOrder(objects);
-  }
-  return std::make_unique<FetchTask>(this, std::move(objects));
+    uint64_t /*group_diff*/, MoqtDeliveryOrder /*order*/) {
+  QUICHE_BUG(MoqtOutgoingQueue_RelativeFetch)
+      << "Calling RelativeFetch() on an established subscription";
+  return std::make_unique<MoqtFailedFetch>(absl::InternalError(
+      "RelativeFetch called on an established subscription"));
 }
 
 std::unique_ptr<MoqtFetchTask> MoqtOutgoingQueue::AbsoluteFetch(
-    uint64_t group, MoqtDeliveryOrder order) {
-  if (queue_.empty()) {
-    return std::make_unique<MoqtFailedFetch>(
-        absl::NotFoundError("No objects available on the track"));
-  }
-
-  Location start(std::max(group, first_group_in_queue()), 0);
-  Location end = Location(current_group_id_, queue_.back().size() - 1);
-  if (start > end) {
-    return std::make_unique<MoqtFailedFetch>(
-        absl::NotFoundError("All of the requested objects are in the future"));
-  }
-
-  std::vector<Location> objects = GetCachedObjectsInRange(start, end);
-  if (order == MoqtDeliveryOrder::kDescending) {
-    ObjectsInDescendingOrder(objects);
-  }
-  return std::make_unique<FetchTask>(this, std::move(objects));
+    uint64_t /*group*/, MoqtDeliveryOrder /*order*/) {
+  QUICHE_BUG(MoqtOutgoingQueue_AbsoluteFetch)
+      << "Calling AbsoluteFetch() on an established subscription";
+  return std::make_unique<MoqtFailedFetch>(absl::InternalError(
+      "AbsoluteFetch called on an established subscription"));
 }
 
 MoqtFetchTask::GetNextObjectResult MoqtOutgoingQueue::FetchTask::GetNextObject(

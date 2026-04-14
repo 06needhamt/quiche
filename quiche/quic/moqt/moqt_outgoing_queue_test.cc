@@ -47,6 +47,7 @@ class TestMoqtOutgoingQueue : public MoqtOutgoingQueue,
                               public MoqtObjectListener {
  public:
   TestMoqtOutgoingQueue() : MoqtOutgoingQueue(FullTrackName{"test", "track"}) {
+    EXPECT_CALL(*this, OnSubscribeAccepted).WillOnce(Return());
     AddObjectListener(this);
   }
 
@@ -364,40 +365,16 @@ TEST(MoqtOutgoingQueue, StandaloneFetch) {
 
 TEST(MoqtOutgoingQueue, RelativeJoiningFetch) {
   TestMoqtOutgoingQueue queue;
-  queue.AddObject(quiche::QuicheMemSlice::Copy("a"), true);  // 0, 0
-  queue.AddObject(quiche::QuicheMemSlice::Copy("b"), true);  // 1, 0
-  // Request before group zero.
-  EXPECT_THAT(
-      FetchToVector(queue.RelativeFetch(4, MoqtDeliveryOrder::kDescending)),
-      IsOkAndHolds(ElementsAre("b", "a")));
-  queue.AddObject(quiche::QuicheMemSlice::Copy("c"), true);   // 2, 0
-  queue.AddObject(quiche::QuicheMemSlice::Copy("d"), false);  // 2, 1
-  queue.AddObject(quiche::QuicheMemSlice::Copy("e"), true);   // 3, 0
-  queue.AddObject(quiche::QuicheMemSlice::Copy("f"), false);  // 3, 1
-  queue.AddObject(quiche::QuicheMemSlice::Copy("g"), true);   // 4, 0
-  // Early groups are already destroyed.
-  EXPECT_THAT(
-      FetchToVector(queue.RelativeFetch(4, MoqtDeliveryOrder::kDescending)),
-      IsOkAndHolds(ElementsAre("g", "e", "f", "c", "d")));
+  EXPECT_QUICHE_BUG(
+      queue.RelativeFetch(1, MoqtDeliveryOrder::kAscending),
+      "Calling RelativeFetch\\(\\) on an established subscription");
 }
 
 TEST(MoqtOutgoingQueue, AbsoluteJoiningFetch) {
   TestMoqtOutgoingQueue queue;
-  queue.AddObject(quiche::QuicheMemSlice::Copy("a"), true);  // 0, 0
-  queue.AddObject(quiche::QuicheMemSlice::Copy("b"), true);  // 1, 0
-  // Request too far in the future
-  EXPECT_THAT(
-      FetchToVector(queue.AbsoluteFetch(4, MoqtDeliveryOrder::kDescending)),
-      StatusIs(absl::StatusCode::kNotFound));
-  queue.AddObject(quiche::QuicheMemSlice::Copy("c"), true);   // 2, 0
-  queue.AddObject(quiche::QuicheMemSlice::Copy("d"), false);  // 2, 1
-  queue.AddObject(quiche::QuicheMemSlice::Copy("e"), true);   // 3, 0
-  queue.AddObject(quiche::QuicheMemSlice::Copy("f"), false);  // 3, 1
-  queue.AddObject(quiche::QuicheMemSlice::Copy("g"), true);   // 4, 0
-  // Early groups are already destroyed.
-  EXPECT_THAT(
-      FetchToVector(queue.AbsoluteFetch(1, MoqtDeliveryOrder::kDescending)),
-      IsOkAndHolds(ElementsAre("g", "e", "f", "c", "d")));
+  EXPECT_QUICHE_BUG(
+      queue.AbsoluteFetch(1, MoqtDeliveryOrder::kAscending),
+      "Calling AbsoluteFetch\\(\\) on an established subscription");
 }
 
 TEST(MoqtOutgoingQueue, ObjectsGoneWhileFetching) {

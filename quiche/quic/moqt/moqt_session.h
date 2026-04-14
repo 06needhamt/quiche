@@ -466,6 +466,8 @@ class QUICHE_EXPORT MoqtSession : public MoqtSessionInterface,
       return default_publisher_priority_.value_or(kDefaultPublisherPriority);
     }
 
+    bool established() const { return established_; }
+
    private:
     friend class test::MoqtSessionPeer;
     SendStreamMap& stream_map();
@@ -484,6 +486,8 @@ class QUICHE_EXPORT MoqtSession : public MoqtSessionInterface,
     MoqtSession* session_;
     std::shared_ptr<MoqtTrackPublisher> track_publisher_;
     uint64_t request_id_;
+    // Subscription is in the ESTABLISHED state.
+    bool established_ = false;
     bool can_have_joining_fetch_ = false;
     const uint64_t track_alias_;
     // These are (mostly) the parameters from the SUBSCRIBE message. However,
