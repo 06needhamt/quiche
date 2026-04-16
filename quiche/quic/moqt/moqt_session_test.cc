@@ -4194,6 +4194,46 @@ TEST_F(MoqtSessionTest, IncomingRequestUpdateTruncatesSubscription) {
   listener->OnNewObjectAvailable(Location(8, 1), 0, 0x80);
 }
 
+TEST_F(MoqtSessionTest, StopSendingBlocksSubgroup) {
+  MoqtSubscribe subscribe = DefaultSubscribe();
+  MockTrackPublisher* track = CreateTrackPublisher();
+  std::unique_ptr<MoqtControlParserVisitor> control_stream =
+      MoqtSessionPeer::CreateControlStream(&session_, &mock_stream_);
+  MoqtObjectListener* listener =
+      ReceiveSubscribeSynchronousOk(track, subscribe, control_stream.get(), 0);
+  EXPECT_CALL(mock_session_, CanOpenNextOutgoingUnidirectionalStream)
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_session_, OpenOutgoingUnidirectionalStream)
+      .WillOnce(Return(&mock_stream_));
+  std::unique_ptr<webtransport::StreamVisitor> data_stream_visitor;
+  EXPECT_CALL(mock_stream_, SetVisitor)
+      .WillOnce([&](std::unique_ptr<webtransport::StreamVisitor> visitor) {
+        data_stream_visitor = std::move(visitor);
+      });
+  EXPECT_CALL(mock_stream_, visitor).WillRepeatedly([&]() {
+    return data_stream_visitor.get();
+  });
+  EXPECT_CALL(mock_stream_, CanWrite).WillRepeatedly(Return(true));
+  EXPECT_CALL(*track, GetCachedObject(0, Optional(1), 0))
+      .WillOnce(Return(PublishedObject{
+          PublishedObjectMetadata{Location(0, 0), 1, "",
+                                  MoqtObjectStatus::kNormal, 0x80,
+                                  MoqtSessionPeer::Now(&session_)},
+          quiche::QuicheMemSlice(), false}));
+  EXPECT_CALL(*track, GetCachedObject(0, Optional(1), 1))
+      .WillOnce(Return(std::nullopt));
+  SetLargestId(track, Location(0, 0));
+  EXPECT_CALL(mock_stream_, Writev).WillOnce(Return(absl::OkStatus()));
+  listener->OnNewObjectAvailable(Location(0, 0), 1, 0x80);
+
+  EXPECT_CALL(mock_stream_, ResetWithUserCode(kResetCodeCancelled));
+  data_stream_visitor->OnStopSendingReceived(kResetCodeCancelled);
+  // New object in the same subgroup should not be sent.
+  EXPECT_CALL(*track, GetCachedObject).Times(0);
+  EXPECT_CALL(mock_stream_, Writev).Times(0);
+  listener->OnNewObjectAvailable(Location(0, 1), 1, 0x80);
+}
+
 }  // namespace test
 
 }  // namespace moqt

@@ -526,10 +526,9 @@ class QUICHE_EXPORT MoqtSession : public MoqtSessionInterface,
     // webtransport::StreamVisitor implementation.
     void OnCanRead() override {}
     void OnCanWrite() override;
-    void OnResetStreamReceived(
-        webtransport::StreamErrorCode /*error*/) override {}
+    void OnResetStreamReceived(webtransport::StreamErrorCode) override {}
     void OnStopSendingReceived(
-        webtransport::StreamErrorCode /*error*/) override {}
+        webtransport::StreamErrorCode error_code) override;
     void OnWriteSideInDataRecvdState() override {}
 
     class DeliveryTimeoutDelegate

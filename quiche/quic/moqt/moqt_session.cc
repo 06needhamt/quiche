@@ -2121,6 +2121,7 @@ void MoqtSession::PublishedSubscription::OnSubgroupAbandoned(
     // This subgroup has already been reset, ignore.
     return;
   }
+  reset_subgroups_.insert(index);
   QUICHE_DCHECK_GE(group, first_active_group_);
   std::optional<webtransport::StreamId> stream_id =
       stream_map().GetStreamFor(index);
@@ -2311,6 +2312,15 @@ void MoqtSession::OutgoingDataStream::OnCanWrite() {
     return;
   }
   SendObjects(*subscription);
+}
+
+void MoqtSession::OutgoingDataStream::OnStopSendingReceived(
+    webtransport::StreamErrorCode error_code) {
+  PublishedSubscription* subscription = GetSubscriptionIfValid();
+  if (subscription == nullptr) {
+    return;
+  }
+  subscription->OnSubgroupAbandoned(index_.group, index_.subgroup, error_code);
 }
 
 void MoqtSession::OutgoingDataStream::DeliveryTimeoutDelegate::OnAlarm() {
