@@ -17,7 +17,7 @@
 #include "quiche/quic/moqt/moqt_object.h"
 #include "quiche/quic/moqt/moqt_priority.h"
 #include "quiche/quic/moqt/moqt_publisher.h"
-#include "quiche/quic/moqt/moqt_subscribe_windows.h"
+#include "quiche/quic/moqt/moqt_stream_map.h"
 #include "quiche/quic/moqt/moqt_types.h"
 #include "quiche/common/platform/api/quiche_bug_tracker.h"
 #include "quiche/common/quiche_mem_slice.h"
@@ -108,10 +108,10 @@ std::optional<PublishedObject> MoqtOutgoingQueue::GetCachedObject(
 std::vector<Location> MoqtOutgoingQueue::GetCachedObjectsInRange(
     Location start, Location end) const {
   std::vector<Location> sequences;
-  SubscribeWindow window(start, end);
   for (const Group& group : queue_) {
     for (const CachedObject& object : group) {
-      if (window.InWindow(object.metadata.location)) {
+      if (object.metadata.location >= start &&
+          object.metadata.location <= end) {
         sequences.push_back(object.metadata.location);
       }
     }

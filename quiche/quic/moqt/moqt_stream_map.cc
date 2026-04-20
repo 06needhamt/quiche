@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "quiche/quic/moqt/moqt_subscribe_windows.h"
+#include "quiche/quic/moqt/moqt_stream_map.h"
 
 #include <cstdint>
 #include <limits>
@@ -29,35 +29,11 @@ std::optional<webtransport::StreamId> SendStreamMap::GetStreamFor(
 void SendStreamMap::AddStream(DataStreamIndex index,
                               webtransport::StreamId stream_id) {
   auto [it, success] = send_streams_.emplace(index, stream_id);
-  QUIC_BUG_IF(quic_bug_moqt_draft_03_02, !success) << "Stream already added";
+  QUICHE_BUG_IF(quic_bug_moqt_draft_03_02, !success) << "Stream already added";
 }
 
 void SendStreamMap::RemoveStream(DataStreamIndex index) {
   send_streams_.erase(index);
-}
-
-bool SubscribeWindow::TruncateStart(Location start) {
-  if (start < start_) {
-    return false;
-  }
-  start_ = start;
-  return true;
-}
-
-bool SubscribeWindow::TruncateEnd(uint64_t end_group) {
-  if (end_group > end_.group) {
-    return false;
-  }
-  end_ = Location(end_group, UINT64_MAX);
-  return true;
-}
-
-bool SubscribeWindow::TruncateEnd(Location largest_id) {
-  if (largest_id > end_) {
-    return false;
-  }
-  end_ = largest_id;
-  return true;
 }
 
 std::vector<webtransport::StreamId> SendStreamMap::GetAllStreams() const {
@@ -78,14 +54,6 @@ std::vector<webtransport::StreamId> SendStreamMap::GetStreamsForGroup(
     ids.push_back(it->second);
   }
   return ids;
-}
-
-bool SubscribeWindow::GroupInWindow(uint64_t group) const {
-  const quic::QuicInterval<Location> group_window(
-      Location(group, 0),
-      Location(group, std::numeric_limits<uint64_t>::max()));
-  const quic::QuicInterval<Location> subscription_window(start_, end_);
-  return group_window.Intersects(subscription_window);
 }
 
 }  // namespace moqt

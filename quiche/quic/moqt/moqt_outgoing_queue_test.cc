@@ -23,7 +23,6 @@
 #include "quiche/quic/moqt/moqt_object.h"
 #include "quiche/quic/moqt/moqt_priority.h"
 #include "quiche/quic/moqt/moqt_publisher.h"
-#include "quiche/quic/moqt/moqt_subscribe_windows.h"
 #include "quiche/quic/moqt/moqt_types.h"
 #include "quiche/quic/moqt/test_tools/moqt_mock_visitor.h"
 #include "quiche/common/platform/api/quiche_expect_bug.h"
@@ -72,14 +71,15 @@ class TestMoqtOutgoingQueue : public MoqtOutgoingQueue,
     }
   }
 
-  void GetObjectsFromPast(const SubscribeWindow& window) {
+  void GetObjectsFromPast(Location start,
+                          std::optional<Location> end = std::nullopt) {
     if (!largest_location().has_value()) {
       return;
     }
     std::vector<Location> objects =
         GetCachedObjectsInRange(Location(0, 0), *largest_location());
     for (Location object : objects) {
-      if (window.InWindow(object)) {
+      if (object >= start && (!end.has_value() || object <= *end)) {
         OnNewObjectAvailable(object, 0, default_publisher_priority());
       }
     }
@@ -160,7 +160,7 @@ TEST(MoqtOutgoingQueue, SingleGroupPastSubscribeFromZero) {
   queue.AddObject(quiche::QuicheMemSlice::Copy("a"), true);
   queue.AddObject(quiche::QuicheMemSlice::Copy("b"), false);
   queue.AddObject(quiche::QuicheMemSlice::Copy("c"), false);
-  queue.GetObjectsFromPast(SubscribeWindow(Location(0, 0)));
+  queue.GetObjectsFromPast(Location(0, 0));
 }
 
 TEST(MoqtOutgoingQueue, SingleGroupPastSubscribeFromMidGroup) {
@@ -177,7 +177,7 @@ TEST(MoqtOutgoingQueue, SingleGroupPastSubscribeFromMidGroup) {
   queue.AddObject(quiche::QuicheMemSlice::Copy("a"), true);
   queue.AddObject(quiche::QuicheMemSlice::Copy("b"), false);
   queue.AddObject(quiche::QuicheMemSlice::Copy("c"), false);
-  queue.GetObjectsFromPast(SubscribeWindow(Location(0, 1)));
+  queue.GetObjectsFromPast(Location(0, 1));
 }
 
 TEST(MoqtOutgoingQueue, TwoGroups) {
@@ -225,7 +225,7 @@ TEST(MoqtOutgoingQueue, TwoGroupsPastSubscribe) {
   queue.AddObject(quiche::QuicheMemSlice::Copy("d"), true);
   queue.AddObject(quiche::QuicheMemSlice::Copy("e"), false);
   queue.AddObject(quiche::QuicheMemSlice::Copy("f"), false);
-  queue.GetObjectsFromPast(SubscribeWindow(Location(0, 1)));
+  queue.GetObjectsFromPast(Location(0, 1));
 }
 
 TEST(MoqtOutgoingQueue, FiveGroups) {
@@ -298,7 +298,7 @@ TEST(MoqtOutgoingQueue, FiveGroupsPastSubscribe) {
   queue.AddObject(quiche::QuicheMemSlice::Copy("h"), false);
   queue.AddObject(quiche::QuicheMemSlice::Copy("i"), true);
   queue.AddObject(quiche::QuicheMemSlice::Copy("j"), false);
-  queue.GetObjectsFromPast(SubscribeWindow(Location(0, 0)));
+  queue.GetObjectsFromPast(Location(0, 0));
 }
 
 TEST(MoqtOutgoingQueue, StandaloneFetch) {

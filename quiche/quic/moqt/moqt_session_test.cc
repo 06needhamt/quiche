@@ -2778,7 +2778,7 @@ TEST_F(MoqtSessionTest, SendJoiningFetchNoFlowControl) {
   // Packet arrives on FETCH stream.
   MoqtObject object = {
       /*request_id=*/2,
-      /*group_id, object_id=*/0,
+      /*group_id, object_id=*/2,
       0,
       /*publisher_priority=*/128,
       /*extension_headers=*/"",
@@ -2790,12 +2790,14 @@ TEST_F(MoqtSessionTest, SendJoiningFetchNoFlowControl) {
   std::optional<PublishedObjectMetadata> metadata;
   quiche::QuicheBuffer header = framer.SerializeObjectHeader(
       object, MoqtDataStreamType::Fetch(), metadata);
-  // Open stream, deliver two objects before FETCH_OK. Neither should be read.
   webtransport::test::InMemoryStream data_stream(kIncomingUniStreamId);
   data_stream.SetVisitor(
       MoqtSessionPeer::CreateIncomingStreamVisitor(&session_, &data_stream));
   data_stream.Receive(header.AsStringView(), false);
   EXPECT_CALL(remote_track_visitor_, OnObjectFragment).Times(1);
+  // Last object of the FETCH causes FETCH_CANCEL.
+  EXPECT_CALL(mock_stream_,
+              Writev(ControlMessageOfType(MoqtMessageType::kFetchCancel), _));
   data_stream.Receive("foo", false);
 }
 
