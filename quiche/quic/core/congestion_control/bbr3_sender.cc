@@ -41,7 +41,6 @@ Bbr3Sender::Bbr3Sender(QuicTime now, const RttStats* rtt_stats,
                        QuicPacketCount max_cwnd_in_packets, QuicRandom* random,
                        QuicConnectionStats* stats, BbrSender* old_sender)
     : mode_(Bbr2Mode::STARTUP),
-      rtt_stats_(rtt_stats),
       unacked_packets_(unacked_packets),
       random_(random),
       connection_stats_(stats),
@@ -56,7 +55,7 @@ Bbr3Sender::Bbr3Sender(QuicTime now, const RttStats* rtt_stats,
           (old_sender) ? old_sender->GetCongestionWindow()
                        : (initial_cwnd_in_packets * kDefaultTCPMSS))),
       cwnd_(initial_cwnd_),
-      pacing_rate_(kInitialPacingGain *
+      pacing_rate_(params_.startup_pacing_gain *
                    QuicBandwidth::FromBytesAndTimeDelta(
                        cwnd_, rtt_stats->SmoothedOrInitialRtt())),
       last_sample_is_app_limited_(false) {
@@ -678,11 +677,11 @@ Bbr2Mode Bbr3Sender::OnCongestionEventStartup(
     if (!congestion_event.last_packet_send_state.is_app_limited) {
       // Multiply by startup_pacing_gain, so if the bandwidth doubles,
       // the pacing gain will be the full startup_pacing_gain.
-      if (startup_.max_bw_at_round_beginning > QuicBandwidth::Zero()) {
+      if (startup_max_bw_at_round_beginning_ > QuicBandwidth::Zero()) {
         const float bandwidth_ratio = std::max(
             1., model_.MaxBandwidth().ToBitsPerSecond() /
                     static_cast<double>(
-                        startup_.max_bw_at_round_beginning.ToBitsPerSecond()));
+                        startup_max_bw_at_round_beginning_.ToBitsPerSecond()));
         // Even when bandwidth isn't increasing, use a gain large enough to
         // cause a full_bw_threshold increase.
         const float new_gain =
@@ -699,7 +698,7 @@ Bbr2Mode Bbr3Sender::OnCongestionEventStartup(
           model_.clear_bandwidth_lo();
         }
       }
-      startup_.max_bw_at_round_beginning = model_.MaxBandwidth();
+      startup_max_bw_at_round_beginning_ = model_.MaxBandwidth();
     }
   }
 
@@ -1195,7 +1194,6 @@ void Bbr3Sender::EnterProbeDown(bool probed_too_high, bool stopped_risky_probe,
           params_.probe_bw_probe_max_rand_duration.ToMicroseconds()));
 
   probe_bw_.probe_up_bytes = std::numeric_limits<QuicByteCount>::max();
-  probe_bw_.probe_up_app_limited_since_inflight_hi_limited_ = false;
   probe_bw_.has_advanced_max_bw = false;
   model_.RestartRoundEarly();
 }

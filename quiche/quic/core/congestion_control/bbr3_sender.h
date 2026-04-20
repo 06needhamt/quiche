@@ -232,7 +232,6 @@ class QUICHE_EXPORT Bbr3Sender final : public SendAlgorithmInterface {
 
   Bbr2Mode mode_;
 
-  const RttStats* const rtt_stats_;
   const QuicUnackedPacketMap* const unacked_packets_;
   QuicRandom* random_;
   QuicConnectionStats* connection_stats_;
@@ -256,9 +255,7 @@ class QUICHE_EXPORT Bbr3Sender final : public SendAlgorithmInterface {
       kMaxInitialCongestionWindow * kDefaultTCPMSS;
 
   // Startup state.
-  struct StartupState {
-    QuicBandwidth max_bw_at_round_beginning = QuicBandwidth::Zero();
-  } startup_;
+  QuicBandwidth startup_max_bw_at_round_beginning_ = QuicBandwidth::Zero();
 
   // Probe BW state.
   struct ProbeBWState {
@@ -271,7 +268,6 @@ class QUICHE_EXPORT Bbr3Sender final : public SendAlgorithmInterface {
     uint64_t probe_up_rounds = 0;
     QuicByteCount probe_up_bytes = std::numeric_limits<QuicByteCount>::max();
     QuicByteCount probe_up_acked = 0;
-    bool probe_up_app_limited_since_inflight_hi_limited_ = false;
     // Whether max bandwidth filter window has advanced in this cycle. It is
     // advanced once per cycle.
     bool has_advanced_max_bw = false;
