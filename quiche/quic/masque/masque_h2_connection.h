@@ -46,9 +46,12 @@ class QUICHE_NO_EXPORT MasqueH2Connection
                            const std::string& body) = 0;
     virtual void OnResponse(MasqueH2Connection* connection, int32_t stream_id,
                             const quiche::HttpHeaderBlock& headers,
-                            const std::string& body) = 0;
+                            const std::string& body, bool end_stream) = 0;
     virtual void OnStreamFailure(MasqueH2Connection* connection,
                                  int32_t stream_id, absl::Status error) = 0;
+    virtual void OnDataForStream(MasqueH2Connection* connection,
+                                 int32_t stream_id, absl::string_view data,
+                                 bool end_stream) = 0;
   };
 
   // `ssl` and `visitor` must outlive this object.
@@ -67,7 +70,11 @@ class QUICHE_NO_EXPORT MasqueH2Connection
   // Call when there is more data to be written to SSL.
   bool AttemptToSend();
   int32_t SendRequest(const quiche::HttpHeaderBlock& headers,
-                      const std::string& body);
+                      const std::string& body, bool end_stream = true,
+                      bool stream_response = false);
+  // Enqueues a body chunk or fin for the given stream.
+  void SendBodyChunk(int32_t stream_id, const std::string& body,
+                     bool end_stream);
   void SendResponse(int32_t stream_id, const quiche::HttpHeaderBlock& headers,
                     const std::string& body);
 
@@ -79,7 +86,9 @@ class QUICHE_NO_EXPORT MasqueH2Connection
     quiche::HttpHeaderBlock received_headers;
     std::string received_body;
     std::string body_to_send;
+    bool end_stream_pending = true;
     bool callback_fired = false;
+    bool response_is_streamed = false;
   };
   static constexpr size_t kBioBufferSize = 16384;
   void Abort(absl::Status error);

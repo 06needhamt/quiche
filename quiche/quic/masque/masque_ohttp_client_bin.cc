@@ -67,6 +67,11 @@ DEFINE_QUICHE_COMMAND_LINE_FLAG(
     "or if set to 0, the client will use standard non-chunked OHTTP.");
 
 DEFINE_QUICHE_COMMAND_LINE_FLAG(
+    bool, ping_pong_mode, false,
+    "If true, enables ping-pong mode for chunked OHTTP requests. Limitations: "
+    "num_ohttp_chunks must be > 0 and there can only be one request.");
+
+DEFINE_QUICHE_COMMAND_LINE_FLAG(
     std::vector<std::string>, header, {},
     "Adds a header field to the encapsulated binary request. Separate the "
     "header name and value with a colon. Can be specified multiple times.");
@@ -131,6 +136,8 @@ absl::Status RunMasqueOhttpClient(int argc, char* argv[]) {
       quiche::GetQuicheCommandLineFlag(FLAGS_expect_gateway_error);
   const std::optional<int16_t> expect_gateway_response_code =
       quiche::GetQuicheCommandLineFlag(FLAGS_expect_gateway_response_code);
+  const bool ping_pong_mode =
+      quiche::GetQuicheCommandLineFlag(FLAGS_ping_pong_mode);
 
   MasqueConnectionPool::DnsConfig dns_config;
   QUICHE_RETURN_IF_ERROR(dns_config.SetAddressFamily(
@@ -229,6 +236,7 @@ absl::Status RunMasqueOhttpClient(int argc, char* argv[]) {
     }
     per_request_config.SetNumOhttpChunks(num_ohttp_chunks);
     per_request_config.SetNumBhttpChunks(num_bhttp_chunks);
+    per_request_config.SetPingPongMode(ping_pong_mode);
     if (expect_gateway_error.has_value()) {
       per_request_config.SetExpectedGatewayError(*expect_gateway_error);
     }
