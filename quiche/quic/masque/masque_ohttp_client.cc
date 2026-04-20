@@ -126,14 +126,13 @@ class PingPongResponseVisitor : public MasqueOhttpClient::ResponseVisitor {
     status_ = client_->SendBodyChunk(request_id_, chunks_[current_chunk_idx_],
                                      is_final);
     current_chunk_idx_++;
-    if (is_final) {
-      done_ = true;
-    }
   }
 
   void OnResponseDone(quic::MasqueConnectionPool::RequestId request_id,
                       const MasqueOhttpClient::Message&) override {
-    if (request_id == request_id_) done_ = true;
+    if (request_id == request_id_) {
+      done_ = true;
+    }
   }
 
   void OnError(quic::MasqueConnectionPool::RequestId request_id,
