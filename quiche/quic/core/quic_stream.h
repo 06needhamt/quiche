@@ -58,7 +58,7 @@ class QuicStream;
 class QUICHE_EXPORT PendingStream
     : public QuicStreamSequencer::StreamInterface {
  public:
-  PendingStream(QuicStreamId id, QuicSession* session);
+  PendingStream(QuicStreamId id, QuicSession& session);
   PendingStream(const PendingStream&) = delete;
   PendingStream(PendingStream&&) = default;
   ~PendingStream() override = default;

@@ -129,26 +129,26 @@ QuicByteCount GetReceivedFlowControlWindow(QuicSession* session,
 
 }  // namespace
 
-PendingStream::PendingStream(QuicStreamId id, QuicSession* session)
+PendingStream::PendingStream(QuicStreamId id, QuicSession& session)
     : id_(id),
-      version_(session->version()),
-      stream_delegate_(session),
+      version_(session.version()),
+      stream_delegate_(&session),
       stream_bytes_read_(0),
       fin_received_(false),
-      is_bidirectional_(QuicUtils::GetStreamType(id, session->perspective(),
+      is_bidirectional_(QuicUtils::GetStreamType(id, session.perspective(),
                                                  /*peer_initiated = */ true,
-                                                 session->version()) ==
+                                                 session.version()) ==
                         BIDIRECTIONAL),
-      connection_flow_controller_(session->flow_controller()),
-      flow_controller_(session, id,
+      connection_flow_controller_(session.flow_controller()),
+      flow_controller_(&session, id,
                        /*is_connection_flow_controller*/ false,
-                       GetReceivedFlowControlWindow(session, id),
-                       GetInitialStreamFlowControlWindowToSend(session, id),
+                       GetReceivedFlowControlWindow(&session, id),
+                       GetInitialStreamFlowControlWindowToSend(&session, id),
                        kStreamReceiveWindowLimit,
-                       session->flow_controller()->auto_tune_receive_window(),
-                       session->flow_controller()),
+                       session.flow_controller()->auto_tune_receive_window(),
+                       session.flow_controller()),
       sequencer_(this),
-      creation_time_(session->GetClock()->ApproximateNow()) {
+      creation_time_(session.GetClock()->ApproximateNow()) {
   if (is_bidirectional_) {
     QUIC_CODE_COUNT_N(quic_pending_stream, 3, 3);
   }
