@@ -36,16 +36,16 @@ SendAlgorithmInterface* SendAlgorithmInterface::Create(
       return new BbrSender(clock->ApproximateNow(), rtt_stats, unacked_packets,
                            initial_congestion_window, max_congestion_window,
                            random, stats);
-    case kBBRv3:
-      return new Bbr3Sender(
+    case kBBRv2:
+      return new Bbr2Sender(
           clock->ApproximateNow(), rtt_stats, unacked_packets,
           initial_congestion_window, max_congestion_window, random, stats,
           old_send_algorithm &&
                   old_send_algorithm->GetCongestionControlType() == kBBR
               ? static_cast<BbrSender*>(old_send_algorithm)
               : nullptr);
-    case kBBRv2:
-      return new Bbr2Sender(
+    case kBBRv3:
+      return new Bbr3Sender(
           clock->ApproximateNow(), rtt_stats, unacked_packets,
           initial_congestion_window, max_congestion_window, random, stats,
           old_send_algorithm &&

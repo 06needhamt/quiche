@@ -66,6 +66,13 @@ QUICHE_EXPORT inline std::ostream& operator<<(std::ostream& os,
   return os << "[" << limits.Min() << ", " << limits.Max() << "]";
 }
 
+// Constants based on TCP defaults.
+// The minimum CWND to ensure delayed acks don't reduce bandwidth measurements.
+// Does not inflate the pacing rate.
+inline constexpr QuicByteCount kDefaultMinimumCongestionWindow =
+    4 * kMaxSegmentSize;
+inline constexpr float kInitialPacingGain = 2.885f;
+
 // Bbr2Params contains all parameters of a Bbr2Sender.
 struct QUICHE_EXPORT Bbr2Params {
   Bbr2Params(QuicByteCount cwnd_min, QuicByteCount cwnd_max)
