@@ -110,8 +110,8 @@ class TestServerSession : public QuicServerSessionBase {
   }
 
   QuicStream* ProcessBidirectionalPendingStream(
-      PendingStream* pending) override {
-    return CreateIncomingStream(pending);
+      PendingStream& pending) override {
+    return CreateIncomingStream(&pending);
   }
 
  private:

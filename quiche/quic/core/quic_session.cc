@@ -3082,10 +3082,10 @@ QuicStream* QuicSession::ProcessPendingStream(PendingStream* pending) {
       stream_id, perspective(), /*peer_initiated=*/true, version());
   switch (stream_type) {
     case BIDIRECTIONAL: {
-      return ProcessBidirectionalPendingStream(pending);
+      return ProcessBidirectionalPendingStream(*pending);
     }
     case READ_UNIDIRECTIONAL: {
-      return ProcessReadUnidirectionalPendingStream(pending);
+      return ProcessReadUnidirectionalPendingStream(*pending);
     }
     case WRITE_UNIDIRECTIONAL:
       ABSL_FALLTHROUGH_INTENDED;

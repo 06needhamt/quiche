@@ -96,9 +96,9 @@ QuicSpdyStream* QuicSimpleServerSession::CreateOutgoingBidirectionalStream() {
 }
 
 QuicStream* QuicSimpleServerSession::ProcessBidirectionalPendingStream(
-    PendingStream* pending) {
+    PendingStream& pending) {
   QUICHE_DCHECK(IsEncryptionEstablished());
-  return CreateIncomingStream(pending);
+  return CreateIncomingStream(&pending);
 }
 
 }  // namespace quic

@@ -92,8 +92,8 @@ WebTransportOnlyServerSession::CreateOutgoingBidirectionalStream() {
 }
 
 QuicStream* WebTransportOnlyServerSession::ProcessBidirectionalPendingStream(
-    PendingStream* pending) {
-  return CreateIncomingStream(pending);
+    PendingStream& pending) {
+  return CreateIncomingStream(&pending);
 }
 
 bool WebTransportOnlyServerSession::OnSettingsFrame(
