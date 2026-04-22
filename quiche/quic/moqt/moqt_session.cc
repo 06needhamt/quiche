@@ -2594,4 +2594,26 @@ void MoqtSession::PublishedSubscription::ProcessObjectAck(
       message.delta_from_deadline);
 }
 
+void MoqtSessionParameters::ToSetupParameters(SetupParameters& out) const {
+  if (perspective == quic::Perspective::IS_CLIENT && !using_webtrans) {
+    out.path = path;
+    out.authority = authority;
+  }
+  if (max_request_id != kDefaultMaxRequestId) {
+    out.max_request_id = max_request_id;
+  }
+  if (max_auth_token_cache_size != kDefaultMaxAuthTokenCacheSize) {
+    out.max_auth_token_cache_size = max_auth_token_cache_size;
+  }
+  if (support_object_acks != kDefaultSupportObjectAcks) {
+    out.support_object_acks = support_object_acks;
+  }
+  if (!moqt_implementation.empty()) {
+    out.moqt_implementation = moqt_implementation;
+  }
+  for (const AuthToken& token : authorization_token) {
+    out.authorization_tokens.push_back(token);
+  }
+}
+
 }  // namespace moqt
